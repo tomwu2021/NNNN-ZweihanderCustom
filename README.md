@@ -50,7 +50,7 @@ This plugin allows weapons with specific tags to automatically unequip shields, 
 ### 🔧 裝備邏輯 / Equipment Logic / 装備ロジック
 
 1. **裝備雙手武器時**：
-   - 自動卸下盾牌（槽位1）
+   - 自動卸下盾牌（槽位2）或已經裝備的武器(槽位1或2)
    - 擁有忽略標籤的角色不受影響
 
 2. **裝備盾牌時**：
@@ -58,7 +58,7 @@ This plugin allows weapons with specific tags to automatically unequip shields, 
    - 擁有忽略標籤的角色不受影響
 
 3. **雙武器模式**：
-   - 智能處理雙手武器的裝備位置
+   - 處理雙手武器的裝備位置
    - 自動調整武器槽位配置
 
 ## 使用方法 / Usage Instructions / 使用方法
@@ -77,15 +77,15 @@ This plugin allows weapons with specific tags to automatically unequip shields, 
 ```
 武器：巨劍
 備註欄：<isZweihander:true>
-效果：裝備時自動卸下盾牌
+效果：裝備時會自動卸下盾牌或另一個位置的武器
 ```
 
 #### 範例2：特殊角色 / Example 2: Special Character / 例2：特別キャラクター
 
 ```
-角色：劍聖
+角色：狂戰士
 備註欄：<ignoreZweihander:true>
-效果：可以同時裝備雙手武器和盾牌
+效果：可以裝備二把雙手武器或雙手武器加盾牌
 ```
 
 ## 測試指南 / Testing Guide / テストガイド
@@ -113,17 +113,10 @@ This plugin allows weapons with specific tags to automatically unequip shields, 
 - 角色設定優先於職業設定
 - 在雙武器模式下有特殊處理邏輯
 
-## 技術規格 / Technical Specifications / 技術仕様
+## 5. 版權聲明
 
-- **檔案大小**: 18KB
-- **行數**: 323 lines
-- **相依性**: 無特殊相依性
-
-## 授權條款 / License / ライセンス
-
-MIT License - Copyright (c) 2024 NeNeNeNeTai
-
-## 支援與反饋 / Support & Feedback / サポート・フィードバック
-
-- **GitHub**: [NeNeNeNeTaiPlugin](https://github.com/tomwu2021/NeNeNeNeTaiPlugin)
-- **作者**: NeNeNeNeTai 
+**授權條款:** MIT License  
+**商業使用:** ✅ 允許  
+**二次開發:** ✅ 允許  
+**轉售權限:** ❌ 禁止轉售原插件  
+**署名要求:** 建議保留原作者資訊  

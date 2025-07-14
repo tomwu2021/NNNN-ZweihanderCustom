@@ -81,16 +81,28 @@
     'use strict';
     const script = document.currentScript;
     const param = PluginManagerEx.createParameter(script);
+    // 忽略標籤名稱常量 / Ignore tag name constant / 無視タグ名定数
     const ignoreTagName = 'ignoreZweihander';
 
-    // 檢查武器是否為雙手武器 / Check if weapon is two-handed / 武器が両手武器かチェック
+    /**
+     * 檢查武器是否為雙手武器
+     * Check if weapon is two-handed
+     * 武器が両手武器かチェック
+     * @param {Object} item - 武器物品 / Weapon item / 武器アイテム
+     * @returns {boolean} 是否為雙手武器 / Whether it's two-handed / 両手武器かどうか
+     */
     DataManager.isZweihanderWeapon = function(item) {
         if (!this.isWeapon(item)) return false;
         const noteData = item.note;
         return noteData.includes('<isZweihander:true>');
     };
 
-    // 檢查角色是否可以忽略雙手武器限制 / Check if actor can ignore two-handed restrictions / アクターが両手武器制限を無視できるかチェック
+    /**
+     * 檢查角色是否可以忽略雙手武器限制
+     * Check if actor can ignore two-handed restrictions
+     * アクターが両手武器制限を無視できるかチェック
+     * @returns {boolean} 是否可以忽略限制 / Whether can ignore restrictions / 制限を無視できるかどうか
+     */
     Game_Actor.prototype.canIgnoreZweihander = function() {
         const actorNoteData = this.actor().note;
         const classNoteData = this.currentClass().note;
@@ -120,19 +132,33 @@
         return false;
     };
 
-    // 檢查角色當前是否裝備了雙手武器 / Check if actor currently has two-handed weapon equipped / アクターが現在両手武器を装備しているかチェック
+    /**
+     * 檢查角色當前是否裝備了雙手武器
+     * Check if actor currently has two-handed weapon equipped
+     * アクターが現在両手武器を装備しているかチェック
+     * @returns {boolean} 是否裝備雙手武器 / Whether equipped with two-handed weapon / 両手武器を装備しているかどうか
+     */
     Game_Actor.prototype.hasZweihanderEquipped = function() {
         const weapons = this.weapons();
         return weapons.some(weapon => DataManager.isZweihanderWeapon(weapon));
     };
 
-    // 檢查角色當前是否裝備了盾牌（槽位1） / Check if actor has shield equipped (slot 1) / アクターが盾を装備しているかチェック（スロット1）
+    /**
+     * 檢查角色當前是否裝備了盾牌（槽位1）
+     * Check if actor has shield equipped (slot 1)
+     * アクターが盾を装備しているかチェック（スロット1）
+     * @returns {boolean} 是否裝備盾牌 / Whether equipped with shield / 盾を装備しているかどうか
+     */
     Game_Actor.prototype.hasShieldEquipped = function() {
         const shieldItem = this._equips[1]; // 槽位1是盾牌 / Slot 1 is shield / スロット1は盾
         return shieldItem && shieldItem._itemId > 0;
     };
 
-    // 重寫裝備變更方法 / Override equipment change method / 装備変更メソッドをオーバーライド
+    /**
+     * 重寫裝備變更方法 - 處理雙手武器邏輯
+     * Override equipment change method - Handle two-handed weapon logic
+     * 装備変更メソッドをオーバーライド - 両手武器ロジックを処理
+     */
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
     Game_Actor.prototype.changeEquip = function(slotId, item) {
         // 如果角色可以忽略雙手武器限制，則不進行限制
@@ -143,9 +169,9 @@
             return;
         }
         
-        // 如果裝備的是武器且為雙手武器（槽位0是武器）
-        // If equipping weapon and it's two-handed (slot 0 is weapon)
-        // 武器を装備し、それが両手武器の場合（スロット0は武器）
+        // 處理武器槽位0的雙手武器裝備
+        // Handle two-handed weapon equipping in weapon slot 0
+        // 武器スロット0での両手武器装備を処理
         if (slotId === 0 && DataManager.isZweihanderWeapon(item)) {
             // 先裝備武器 / First equip weapon / まず武器を装備
             _Game_Actor_changeEquip.apply(this, arguments);
@@ -157,9 +183,9 @@
             return;
         }
         
-        // 如果裝備的是雙手武器且在槽位1（雙武器模式下的第二武器槽）
-        // If equipping two-handed weapon in slot 1 (second weapon slot in dual wield mode)
-        // 両手武器をスロット1に装備する場合（二刀流モードの第二武器スロット）
+        // 處理雙武器模式下槽位1的雙手武器裝備
+        // Handle two-handed weapon equipping in slot 1 under dual wield mode
+        // 二刀流モードでのスロット1での両手武器装備を処理
         if (slotId === 1 && this.isDualWield() && DataManager.isZweihanderWeapon(item)) {
             // 卸除槽位0的武器 / Remove weapon from slot 0 / スロット0の武器を外す
             if (this._equips[0] && this._equips[0]._itemId > 0) {
@@ -171,9 +197,9 @@
             return;
         }
         
-        // 如果裝備的是單手武器且在槽位1（雙武器模式下的第二武器槽）
-        // If equipping single-handed weapon in slot 1 (second weapon slot in dual wield mode)
-        // 片手武器をスロット1に装備する場合（二刀流モードの第二武器スロット）
+        // 處理雙武器模式下槽位1的單手武器裝備
+        // Handle single-handed weapon equipping in slot 1 under dual wield mode
+        // 二刀流モードでのスロット1での片手武器装備を処理
         if (slotId === 1 && this.isDualWield() && DataManager.isWeapon(item) && !DataManager.isZweihanderWeapon(item)) {
             const slot0Weapon = this._equips[0].object();
             
@@ -202,9 +228,9 @@
             return;
         }
         
-        // 如果裝備的是盾牌（槽位1是盾牌）
-        // If equipping shield (slot 1 is shield)
-        // 盾を装備する場合（スロット1は盾）
+        // 處理盾牌裝備時與雙手武器的衝突
+        // Handle conflicts between shield equipping and two-handed weapons
+        // 盾装備時と両手武器との競合を処理
         if (slotId === 1 && item && !this.isDualWield()) {
             // 檢查當前是否裝備了雙手武器
             // Check if currently equipped with two-handed weapon
@@ -228,7 +254,11 @@
         _Game_Actor_changeEquip.apply(this, arguments);
     };
 
-    // 重寫強制裝備變更方法 / Override force equipment change method / 強制装備変更メソッドをオーバーライド
+    /**
+     * 重寫強制裝備變更方法 - 處理雙手武器邏輯（無交易版本）
+     * Override force equipment change method - Handle two-handed weapon logic (no trading version)
+     * 強制装備変更メソッドをオーバーライド - 両手武器ロジックを処理（取引なしバージョン）
+     */
     const _Game_Actor_forceChangeEquip = Game_Actor.prototype.forceChangeEquip;
     Game_Actor.prototype.forceChangeEquip = function(slotId, item) {
         // 如果角色可以忽略雙手武器限制，則不進行限制
@@ -239,9 +269,9 @@
             return;
         }
 
-        // 如果裝備的是武器且為雙手武器（槽位0是武器）
-        // If equipping weapon and it's two-handed (slot 0 is weapon)
-        // 武器を装備し、それが両手武器の場合（スロット0は武器）
+        // 處理武器槽位0的強制雙手武器裝備
+        // Handle forced two-handed weapon equipping in weapon slot 0
+        // 武器スロット0での強制両手武器装備を処理
         if (slotId === 0 && DataManager.isZweihanderWeapon(item)) {
             // 先裝備武器 / First equip weapon / まず武器を装備
             _Game_Actor_forceChangeEquip.apply(this, arguments);
@@ -252,9 +282,9 @@
             return;
         }
         
-        // 如果裝備的是雙手武器且在槽位1（雙武器模式下的第二武器槽）
-        // If equipping two-handed weapon in slot 1 (second weapon slot in dual wield mode)
-        // 両手武器をスロット1に装備する場合（二刀流モードの第二武器スロット）
+        // 處理雙武器模式下槽位1的強制雙手武器裝備
+        // Handle forced two-handed weapon equipping in slot 1 under dual wield mode
+        // 二刀流モードでのスロット1での強制両手武器装備を処理
         if (slotId === 1 && this.isDualWield() && DataManager.isZweihanderWeapon(item)) {
             // 卸除槽位0的武器 / Remove weapon from slot 0 / スロット0の武器を外す
             if (this._equips[0] && this._equips[0]._itemId > 0) {
@@ -265,9 +295,9 @@
             return;
         }
         
-        // 如果裝備的是單手武器且在槽位1（雙武器模式下的第二武器槽）
-        // If equipping single-handed weapon in slot 1 (second weapon slot in dual wield mode)
-        // 片手武器をスロット1に装備する場合（二刀流モードの第二武器スロット）
+        // 處理雙武器模式下槽位1的強制單手武器裝備
+        // Handle forced single-handed weapon equipping in slot 1 under dual wield mode
+        // 二刀流モードでのスロット1での強制片手武器装備を処理
         if (slotId === 1 && this.isDualWield() && DataManager.isWeapon(item) && !DataManager.isZweihanderWeapon(item)) {
             const slot0Weapon = this._equips[0].object();
             
@@ -295,9 +325,9 @@
             return;
         }
         
-        // 如果裝備的是盾牌（槽位1是盾牌）
-        // If equipping shield (slot 1 is shield)
-        // 盾を装備する場合（スロット1は盾）
+        // 處理強制盾牌裝備時與雙手武器的衝突
+        // Handle conflicts between forced shield equipping and two-handed weapons
+        // 強制盾装備時と両手武器との競合を処理
         if (slotId === 1 && item && !this.isDualWield()) {
             // 檢查當前是否裝備了雙手武器
             // Check if currently equipped with two-handed weapon
