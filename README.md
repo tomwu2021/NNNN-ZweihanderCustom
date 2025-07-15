@@ -61,6 +61,7 @@ This plugin enables weapons with specific tags to automatically unequip shields,
    - 處理雙手武器的裝備位置
    - 自動調整武器槽位配置
 
+
 ## 使用方法 / Usage Instructions / 使用方法
 
 ### 🚀 基本設置 / Basic Setup / 基本設定
@@ -85,7 +86,7 @@ This plugin enables weapons with specific tags to automatically unequip shields,
 ```
 角色：狂戰士
 備註欄：<ignoreZweihander:true>
-效果：可以裝備二把雙手武器或雙手武器加盾牌
+效果：即使裝備雙手武器，仍可以裝備二把雙手武器或盾牌
 ```
 
 ## 測試指南 / Testing Guide / テストガイド
@@ -112,7 +113,7 @@ This plugin enables weapons with specific tags to automatically unequip shields,
 - 不影響遊戲的其他系統
 - 角色設定優先於職業設定
 
-## 5. 版權聲明
+## 版權聲明
 
 **授權條款:** MIT License  
 **商業使用:** ✅ 允許  
