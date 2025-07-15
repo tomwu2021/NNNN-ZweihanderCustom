@@ -128,6 +128,37 @@
             return true;
         }
         
+        //檢查裝備是否有忽略標籤,若裝備其一為ignoreTagName:true且沒有裝備是ignoreTagName:false,則可以忽略，如有裝備設置為false或全部都未設定則為False
+        // Check if any equipped item has ignore tag, if any item is set to true and
+        // no item is set to false, then can ignore; if any item is set to false or all are unset, then false
+        // 装備アイテムに無視タグがあるかチェック、もし無視タグがtrueに設定されていて、falseに設定されているアイテムがない場合は無視可能; falseに設定されているアイテムがあるか、全て未設定の場合は無視不可
+        //TODO 讓防具和飾品也可以設定ignoreZweihander標籤
+        /*
+        const equippedItems = this.weapons().concat(this.armors());
+        let canIgnore = false;
+        let hasFalse = false;
+        for (const item of equippedItems) {
+            if (item && item.note.includes(`<${ignoreTagName}:true>`)) {
+                canIgnore = true;
+            }
+            if (item && item.note.includes(`<${ignoreTagName}:false>`)) {
+                hasFalse = true;
+            }
+        }
+        // 如果有任何裝備設置為false，則不能忽略    
+        // If any equipped item is set to false, cannot ignore
+        // もし装備アイテムの中にfalseに設定されているものがあれば、無視不可
+        if (hasFalse) {
+            return false;
+        }else{
+            // 如果有裝備設置為true，則可以忽略
+            // If any equipped item is set to true, can ignore
+            // もし装備アイテムの中にtrueに設定されているものがあれば、無視可能
+            if (canIgnore) {
+                return true;
+            }
+        }
+        */
         // 默認不能忽略 / Default cannot ignore / デフォルトは無視不可
         return false;
     };
@@ -164,11 +195,45 @@
         // 如果角色可以忽略雙手武器限制，則不進行限制
         // If actor can ignore two-handed restrictions, no restrictions apply
         // アクターが両手武器制限を無視できる場合、制限を適用しない
+        /* 
+        TODO 處理更換防具(slotId>1)時 忽略標籤結果的變化
+        TODO 流程方案1. 
+                    先記錄當前忽略標籤結果是true還是False
+                    =>執行裝備防具
+                    =>比對新忽略標籤結果與暫存結果(若相同則Return)
+                    =>若不同則分新結果是False還是True
+                    =>若新結果是False && 槽位0存在 && 槽位1存在 && 至少其一isZweihanderWeapon結果為true=>卸下槽位1
+                    =>若新結果是True不動作
+        TODO 流程方案2.
+                    執行裝備防具
+                    =>判斷忽略標籤結果
+                        =>為True=>不動作
+                        =>為False && 槽位0存在 && 槽位1存在 && 至少其一isZweihanderWeapon結果為true=>卸下槽位1
+
+        */
+        /*
+        if(slotIdb>1){
+            _Game_Actor_changeEquip.apply(this, arguments);
+            if(this.canIgnoreZweihander() && (DataManager.isZweihanderWeapon(this._equips[0])|| 
+            DataManager.isZweihanderWeapon(this._equips[1]))){
+                // 如果裝備的武器是雙手武器，則卸下盾牌
+                // If equipped weapon is two-handed, unequip shield
+                // 装備されている武器が両手武器の場合、盾を外す
+                if (this._equips[1] && this._equips[1]._itemId > 0) {
+                    this.tradeItemWithParty(null, this._equips[1].object());
+                    this._equips[1].setObject(null);
+                }
+            }
+        }else if (this.canIgnoreZweihander()) {
+            _Game_Actor_changeEquip.apply(this, arguments);
+            return;
+        }
+        */
         if (this.canIgnoreZweihander()) {
             _Game_Actor_changeEquip.apply(this, arguments);
             return;
         }
-        
+
         // 處理武器槽位0的雙手武器裝備
         // Handle two-handed weapon equipping in weapon slot 0
         // 武器スロット0での両手武器装備を処理
