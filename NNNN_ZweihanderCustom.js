@@ -22,7 +22,7 @@
  * @author NeNeNeNeTai
  * @url https://github.com/tomwu2021/NeNeNeNeTaiPlugin
  * 
- * 
+ *
  * @help NNNN_ZweihanderCustom.js
  *
  * 自定義雙手武器系統 / Custom Two-Handed Weapon System / カスタム両手武器システム：
@@ -166,7 +166,7 @@
     const param = PluginManagerEx.createParameter(script);
     const ignoreTagName = 'ignoreZweihander';
     const dualGripTagName = 'enableDualGrip';
-    
+
     // 移除 originalWeaponsData 相關代碼，因為不再需要
     
     // 移除 DataManager.onLoad 的備份邏輯
@@ -247,30 +247,22 @@
         // 檢查是否可以忽略雙手武器限制
         if (actor.canIgnoreZweihander()) {
             // 可以忽略限制，不需要修正
-            console.log(`初始化：角色 ${actor.name()} 可以忽略雙手武器限制，跳過檢查`);
             return;
         }
 
         const weapon0 = actor._equips[0] ? actor._equips[0].object() : null;
         const weapon1 = actor._equips[1] ? actor._equips[1].object() : null;
         
-        console.log(`初始化：檢查角色 ${actor.name()} 的裝備狀態`);
-        console.log(`  主手武器：${weapon0 ? weapon0.name : '無'}`);
-        console.log(`  副手裝備：${weapon1 ? weapon1.name : '無'}`);
-        console.log(`  雙武器模式：${actor.isDualWield() ? '是' : '否'}`);
-        
         // 檢查雙手武器與盾牌/副手武器的衝突
         if (weapon0 && DataManager.isZweihanderWeapon(weapon0)) {
             // 主手是雙手武器，檢查是否有副手裝備
             if (weapon1 || (actor._equips[1] && actor._equips[1]._itemId > 0)) {
                 // 有副手裝備，需要卸除副手
-                console.log(`初始化：角色 ${actor.name()} 裝備雙手武器 ${weapon0.name}，自動卸除副手裝備`);
                 forceUnequipSlot(actor, 1);
             }
         } else if (weapon1 && DataManager.isZweihanderWeapon(weapon1)) {
             // 副手是雙手武器（雙武器模式），需要移到主手
             if (actor.isDualWield()) {
-                console.log(`初始化：角色 ${actor.name()} 副手裝備雙手武器 ${weapon1.name}，移動到主手`);
                 // 卸除主手武器
                 if (weapon0) {
                     forceUnequipSlot(actor, 0);
@@ -286,7 +278,6 @@
         if (!actor.isDualWield() && weapon1 && !DataManager.isWeapon(weapon1)) {
             // 裝備了盾牌，檢查主手是否是雙手武器
             if (weapon0 && DataManager.isZweihanderWeapon(weapon0)) {
-                console.log(`初始化：角色 ${actor.name()} 同時裝備雙手武器和盾牌，自動卸除盾牌`);
                 forceUnequipSlot(actor, 1);
             }
         }
@@ -295,10 +286,8 @@
         if (actor.isDualWield() && weapon0 && weapon1) {
             // 雙武器模式，檢查是否有雙手武器
             if (DataManager.isZweihanderWeapon(weapon0)) {
-                console.log(`初始化：角色 ${actor.name()} 雙武器模式下主手裝備雙手武器，自動卸除副手`);
                 forceUnequipSlot(actor, 1);
             } else if (DataManager.isZweihanderWeapon(weapon1)) {
-                console.log(`初始化：角色 ${actor.name()} 雙武器模式下副手裝備雙手武器，移動到主手`);
                 // 將副手的雙手武器移到主手
                 const zweihanderWeapon = weapon1;
                 forceUnequipSlot(actor, 0);
@@ -306,8 +295,6 @@
                 actor._equips[0].setObject(zweihanderWeapon);
             }
         }
-        
-        console.log(`初始化：角色 ${actor.name()} 裝備狀態檢查完成`);
     }
 
     function forceUnequipSlot(actor, slotId) {
@@ -315,7 +302,6 @@
         if (actor._equips[slotId] && actor._equips[slotId]._itemId > 0) {
             const item = actor._equips[slotId].object();
             if (item) {
-                console.log(`  強制卸除槽位 ${slotId} 的裝備：${item.name}`);
                 // 交易回物品欄
                 actor.tradeItemWithParty(null, item);
             }
@@ -369,7 +355,6 @@
 
     function checkEquipmentDualGripSkill(actor) {
         const equippedItems = actor.weapons().concat(actor.armors());
-        console.log(equippedItems);
         let hasTrue = false;
         let hasFalse = false;
         
@@ -445,12 +430,12 @@
         DualGripBonusData.forEach(entry => {
             const trait = TraitKeyMap[entry.key];
             if (!trait) return;
-            
+
             traits.push({
-                code: trait.code,
-                dataId: trait.dataId,
-                value: entry.value
-            });
+                    code: trait.code,
+                    dataId: trait.dataId,
+                    value: entry.value
+                });
         });
         
         return traits;
@@ -481,7 +466,6 @@
     Game_Actor.prototype.canIgnoreZweihander = function() {
         // 先檢查裝備優先級
         const equipmentResult = checkEquipmentIgnoreTag(this);
-        console.log(equipmentResult);
         if (equipmentResult !== null) {
             return equipmentResult;
         }
@@ -561,6 +545,24 @@
         return shieldItem && shieldItem._itemId > 0;
     };
 
+    DataManager.isShield = function(item) {
+        return DataManager.isArmor(item) && item.etypeId === 2;
+    };
+
+    const _Window_ItemList_makeItemList = Window_ItemList.prototype.makeItemList;
+    Window_ItemList.prototype.makeItemList = function() {
+        _Window_ItemList_makeItemList.call(this);
+        const isEquipScene = this._category === "none";
+        const isEquipType1Locked = this._actor?.isEquipTypeLocked(1);
+        const isEquipType2Locked = this._actor?.isEquipTypeLocked(2);
+        const isShieldEquipped = this._actor?.hasShieldEquipped();
+        if (isEquipScene && this._actor && isEquipType2Locked && isShieldEquipped) {
+            this._data = this._data.filter(item => !DataManager.isZweihanderWeapon(item));
+        }
+        if (isEquipScene && this._actor && isEquipType1Locked && this._actor.hasZweihanderEquipped()) {
+            this._data = this._data.filter(item => !DataManager.isShield(item));
+        }
+    };
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
     Game_Actor.prototype.changeEquip = function(slotId, item) {
         if (slotId > 1) {
