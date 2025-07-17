@@ -556,11 +556,13 @@
         const isEquipType1Locked = this._actor?.isEquipTypeLocked(1);
         const isEquipType2Locked = this._actor?.isEquipTypeLocked(2);
         const isShieldEquipped = this._actor?.hasShieldEquipped();
+        const hasIgnoreTag = checkActorIgnoreTag(this._actor);
+
         if (isEquipScene && this._actor && isEquipType2Locked && isShieldEquipped) {
-            this._data = this._data.filter(item => !DataManager.isZweihanderWeapon(item));
+            this._data = this._data.filter(item => !DataManager.isZweihanderWeapon(item) && !hasIgnoreTag);
         }
         if (isEquipScene && this._actor && isEquipType1Locked && this._actor.hasZweihanderEquipped()) {
-            this._data = this._data.filter(item => !DataManager.isShield(item));
+            this._data = this._data.filter(item => !DataManager.isShield(item) && !hasIgnoreTag);
         }
     };
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
