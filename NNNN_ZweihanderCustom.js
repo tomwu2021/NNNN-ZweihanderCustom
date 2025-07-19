@@ -11,15 +11,17 @@
 ----------------------------------------------------------------------------
  Version
  1.0.0 2024/12/19 Initial version / 初版 / 初版
+ 1.1.0 2024/12/19 Added dual grip skill system and equipment ignore tags / 新增雙手持技能系統及裝備忽略標籤 / 両手持ちスキルシステムと装備無視タグを追加
  Author: NeNeNeNeTai
  GitHub: https://github.com/tomwu2021/NeNeNeNeTaiPlugin
 =============================================================================*/
 
 /*:
- * @plugindesc 自定義雙手武器插件 v1.0.0 / Custom Two-Handed Weapon Plugin v1.0.0 / カスタム両手武器プラグイン v1.0.0
+ * @plugindesc 自定義雙手武器插件 v1.1.0 / Custom Two-Handed Weapon Plugin v1.1.0 / カスタム両手武器プラグイン v1.1.0
  * @target MZ
  * @author NeNeNeNeTai
  * @url https://github.com/tomwu2021/NeNeNeNeTaiPlugin
+ * 
  *
  * @help NNNN_ZweihanderCustom.js
  *
@@ -31,11 +33,21 @@
  * 角色note標籤 / Actor note tags / アクターノートタグ：
  * <ignoreZweihander:true> - 角色可以忽略雙手武器限制 / Actor can ignore two-handed weapon restrictions / アクターは両手武器制限を無視可能
  * <ignoreZweihander:false> - 角色強制不能忽略雙手武器限制 / Actor cannot ignore two-handed weapon restrictions / アクターは両手武器制限を無視不可
+ * <enableDualGrip:true> - 角色擁有雙手持技能，可獲得單手武器加成 / Actor has dual grip skill for single-handed weapon bonus / アクターは両手持ちスキルを持ち、片手武器ボーナスを得る
  * 
  * 職業note標籤 / Class note tags / 職業ノートタグ：
  * <ignoreZweihander:true> - 該職業可以忽略雙手武器限制 / This class can ignore two-handed weapon restrictions / この職業は両手武器制限を無視可能
+ * <enableDualGrip:true> - 該職業擁有雙手持技能，可獲得單手武器加成 / This class has dual grip skill for single-handed weapon bonus / この職業は両手持ちスキルを持ち、片手武器ボーナスを得る
  * 
- * 優先級 / Priority / 優先度：角色設定 > 職業設定 / Actor settings > Class settings / アクター設定 > 職業設定
+ * 裝備note標籤 / Equipment note tags / 装備ノートタグ：
+ * <ignoreZweihander:true> - 裝備此物品可忽略雙手武器限制 / Equipping this item allows ignoring two-handed weapon restrictions / このアイテムを装備すると両手武器制限を無視可能
+ * <ignoreZweihander:false> - 裝備此物品禁止忽略雙手武器限制 / Equipping this item prohibits ignoring two-handed weapon restrictions / このアイテムを装備すると両手武器制限の無視を禁止
+ * 
+ * 優先級 / Priority / 優先度：
+ * 1. 裝備標籤（任一裝備設為false則禁止，無false且有true則允許）
+ *    Equipment tags (any equipment set to false prohibits, no false and has true allows)
+ *    装備タグ（いずれかの装備がfalseに設定されている場合は禁止、falseがなくtrueがある場合は許可）
+ * 2. 角色設定 > 職業設定 / Actor settings > Class settings / アクター設定 > 職業設定
  * 
  * 功能說明 / Features / 機能説明：
  * 1. 裝備帶有<isZweihander:true>標籤的武器時，自動卸下盾牌
@@ -44,310 +56,731 @@
  * 2. 裝備盾牌時，如果當前武器是雙手武器，自動卸下武器
  *    When equipping shields, if current weapon is two-handed, automatically unequip weapon
  *    盾を装備時、現在の武器が両手武器なら自動的に武器を外す
- * 3. 擁有忽略標籤的角色或職業可以正常裝備雙手武器和盾牌
- *    Characters or classes with ignore tags can normally equip two-handed weapons and shields
- *    無視タグを持つキャラクターや職業は両手武器と盾を正常に装備可能
- * 4. 角色設定優先於職業設定
- *    Actor settings take priority over class settings
- *    アクター設定は職業設定より優先
+ * 3. 擁有忽略標籤的角色、職業或裝備可以正常裝備雙手武器和盾牌
+ *    Characters, classes, or equipment with ignore tags can normally equip two-handed weapons and shields
+ *    無視タグを持つキャラクター、職業、装備は両手武器と盾を正常に装備可能
+ * 4. 裝備標籤優先於角色設定，角色設定優先於職業設定
+ *    Equipment tags take priority over actor settings, actor settings take priority over class settings
+ *    装備タグはアクター設定より優先、アクター設定は職業設定より優先
  * 5. 雙武器模式下的智能裝備處理
  *    Intelligent equipment handling in dual wield mode
  *    二刀流モードでのインテリジェント装備処理
+ * 6. 雙手持技能系統：當裝備單手武器且副手為空時，擁有雙手持技能的角色可獲得額外加成
+ *    Dual grip skill system: When equipping single-handed weapon with empty off-hand, characters with dual grip skill gain extra bonuses
+ *    両手持ちスキルシステム：片手武器を装備し副手が空の時、両手持ちスキルを持つキャラクターは追加ボーナスを得る
  * 
- * 利用規約 / License / 利用規約：
- * MIT License
- * Copyright (c) 2024 NeNeNeNeTai
+ * 雙手持技能加成內容 / Dual Grip Skill Bonuses / 両手持ちスキルボーナス内容：
+ * - 可透過插件參數設定各項參數的加成倍率
+ * - 支援所有基本參數、追加參數、特殊參數
+ * - 預設值：攻擊力 x1.2、暴擊率 +10%
+ * - Can configure bonus multipliers for each parameter through plugin settings
+ * - Supports all basic parameters, extra parameters, and special parameters
+ * - Default values: Attack x1.2, Critical rate +10%
+* - プラグインパラメータで各パラメータのボーナス倍率を設定可能
+* - 全ての基本パラメータ、追加パラメータ、特殊パラメータをサポート
+* - デフォルト値：攻撃力 x1.2、会心率 +10%
  * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * @param dualGripBonuses
+ * @text 雙手持技能加成設定 / Dual Grip Skill Bonuses / 両手持ちスキルボーナス設定
+ * @desc 設定雙手持技能的各項參數加成 / Configure parameter bonuses for dual grip skill / 両手持ちスキルの各種パラメータボーナスを設定
+ * @type struct<DualGripBonus>[]
+ * @default ["{\"param\":\"ATK\",\"value\":\"1.2\"}","{\"param\":\"CRI\",\"value\":\"0.1\"}"]
+ *
+*/
+
+/*~struct~DualGripBonus:
+ * @param param
+ * @text 參數 / Parameter / パラメータ
+ * @desc 選擇要加成的參數類型 / Select the parameter type to bonus / ボーナス対象のパラメータタイプを選択
+ * @type select
+ * @option 最大生命值 / Max Hit Points / 最大HP
+ * @value MHP
+ * @option 最大魔力值 / Max Magic Points / 最大MP
+ * @value MMP
+ * @option 攻擊力 / Attack Power / 攻撃力
+ * @value ATK
+ * @option 防禦力 / Defense Power / 防御力
+ * @value DEF
+ * @option 魔法攻擊力 / Magic Attack Power / 魔法攻撃力
+ * @value MAT
+ * @option 魔法防禦力 / Magic Defense Power / 魔法防御力
+ * @value MDF
+ * @option 敏捷 / Agility / 敏捷性
+ * @value AGI
+ * @option 幸運 / Luck / 運
+ * @value LUK
+ * @option 命中率 / Hit Rate / 命中率
+ * @value HIT
+ * @option 迴避率 / Evasion Rate / 回避率
+ * @value EVA
+ * @option 暴擊率 / Critical Rate / 会心率
+ * @value CRI
+ * @option 暴擊迴避率 / Critical Evasion Rate / 会心回避率
+ * @value CEV
+ * @option 魔法迴避率 / Magic Evasion Rate / 魔法回避率
+ * @value MEV
+ * @option 魔法反射率 / Magic Reflection Rate / 魔法反射率
+ * @value MRF
+ * @option 反擊率 / Counter Rate / 反撃率
+ * @value CNT
+ * @option 生命回復率 / HP Regeneration Rate / HP再生率
+ * @value HRG
+ * @option 魔力回復率 / MP Regeneration Rate / MP再生率
+ * @value MRG
+ * @option 戰術點回復率 / TP Regeneration Rate / TP再生率
+ * @value TRG
+ * @option 目標率 / Target Rate / 狙われ率
+ * @value TGR
+ * @option 防禦效果率 / Guard Effect Rate / 防御効果率
+ * @value GRD
+ * @option 回復效果率 / Recovery Effect Rate / 回復効果率
+ * @value REC
+ * @option 藥理學 / Pharmacology / 薬の知識
+ * @value PHA
+ * @option 魔力消耗率 / MP Cost Rate / MP消費率
+ * @value MCR
+ * @option 戰術點充能率 / TP Charge Rate / TPチャージ率
+ * @value TCR
+ * @option 物理傷害率 / Physical Damage Rate / 物理ダメージ率
+ * @value PDR
+ * @option 魔法傷害率 / Magic Damage Rate / 魔法ダメージ率
+ * @value MDR
+ * @option 地面傷害率 / Floor Damage Rate / 床ダメージ率
+ * @value FDR
+ * @option 經驗值倍率 / Experience Rate / 経験値倍率
+ * @value EXR
+ * @default ATK
+ *
+ * @param value
+ * @text 倍率 / Multiplier / 倍率
+ * @desc 參數加成倍率（可使用小數點） / Parameter bonus multiplier (decimals allowed) / パラメータボーナス倍率（小数点可）
+ * @type number
+ * @min 0
+ * @decimals 3
+ * @default 1.0
  */
 
 (()=> {
     'use strict';
     const script = document.currentScript;
     const param = PluginManagerEx.createParameter(script);
-    // 忽略標籤名稱常量 / Ignore tag name constant / 無視タグ名定数
     const ignoreTagName = 'ignoreZweihander';
+    const dualGripTagName = 'enableDualGrip';
 
-    /**
-     * 檢查武器是否為雙手武器
-     * Check if weapon is two-handed
-     * 武器が両手武器かチェック
-     * @param {Object} item - 武器物品 / Weapon item / 武器アイテム
-     * @returns {boolean} 是否為雙手武器 / Whether it's two-handed / 両手武器かどうか
-     */
-    DataManager.isZweihanderWeapon = function(item) {
-        if (!this.isWeapon(item)) return false;
-        const noteData = item.note;
-        return noteData.includes('<isZweihander:true>');
+    // 移除 originalWeaponsData 相關代碼，因為不再需要
+    
+    // 移除 DataManager.onLoad 的備份邏輯
+    
+    const _Scene_Map_onMapLoaded = Scene_Map.prototype.onMapLoaded;
+    Scene_Map.prototype.onMapLoaded = function() {
+        _Scene_Map_onMapLoaded.call(this);
+        initializeDualGripBonuses();
     };
 
-    /**
-     * 檢查角色是否可以忽略雙手武器限制
-     * Check if actor can ignore two-handed restrictions
-     * アクターが両手武器制限を無視できるかチェック
-     * @returns {boolean} 是否可以忽略限制 / Whether can ignore restrictions / 制限を無視できるかどうか
-     */
-    Game_Actor.prototype.canIgnoreZweihander = function() {
-        const actorNoteData = this.actor().note;
-        const classNoteData = this.currentClass().note;
+    const _Scene_Load_onLoadSuccess = Scene_Load.prototype.onLoadSuccess;
+    Scene_Load.prototype.onLoadSuccess = function() {
+        _Scene_Load_onLoadSuccess.call(this);
+        initializeDualGripBonuses();
+    };
+
+    const _Scene_Title_commandNewGame = Scene_Title.prototype.commandNewGame;
+    Scene_Title.prototype.commandNewGame = function() {
+        _Scene_Title_commandNewGame.call(this);
+        setTimeout(() => {
+            initializeDualGripBonuses();
+        }, 100);
+    };
+    
+    const TraitKeyMap = {
+        "MHP": { code: 21, dataId: 0 },
+        "MMP": { code: 21, dataId: 1 },
+        "ATK": { code: 21, dataId: 2 },
+        "DEF": { code: 21, dataId: 3 },
+        "MAT": { code: 21, dataId: 4 },
+        "MDF": { code: 21, dataId: 5 },
+        "AGI": { code: 21, dataId: 6 },
+        "LUK": { code: 21, dataId: 7 },
+        "HIT": { code: 22, dataId: 0 },
+        "EVA": { code: 22, dataId: 1 },
+        "CRI": { code: 22, dataId: 2 },
+        "CEV": { code: 22, dataId: 3 },
+        "MEV": { code: 22, dataId: 4 },
+        "MRF": { code: 22, dataId: 5 },
+        "CNT": { code: 22, dataId: 6 },
+        "HRG": { code: 22, dataId: 7 },
+        "MRG": { code: 22, dataId: 8 },
+        "TRG": { code: 22, dataId: 9 },
+        "TGR": { code: 23, dataId: 0 },
+        "GRD": { code: 23, dataId: 1 },
+        "REC": { code: 23, dataId: 2 },
+        "PHA": { code: 23, dataId: 3 },
+        "MCR": { code: 23, dataId: 4 },
+        "TCR": { code: 23, dataId: 5 },
+        "PDR": { code: 23, dataId: 6 },
+        "MDR": { code: 23, dataId: 7 },
+        "FDR": { code: 23, dataId: 8 },
+        "EXR": { code: 23, dataId: 9 }
+    };
+    
+    const DualGripBonusData = param.dualGripBonuses.map(item => {
+        return { key: item.param, value: parseFloat(item.value) };
+    }).filter(item => item.key && TraitKeyMap[item.key]);
+
+    function initializeDualGripBonuses() {
+        // 初始化時檢測並修正角色的裝備狀態
+        if (!$gameParty || !$gameParty._actors || !$dataWeapons || !$dataArmors) return;
         
-        // 角色優先：如果角色明確設置了false，則不能忽略
-        // Actor priority: If actor explicitly set false, cannot ignore
-        // アクター優先：アクターが明示的にfalseを設定した場合、無視不可
-        if (actorNoteData.includes(`<${ignoreTagName}:false>`)) {
-            return false;
+        // 確保所有角色數據都已載入
+        if (!$gameActors) return;
+        
+        $gameParty.members().forEach(actor => {
+            if (actor) {
+                // 檢查並修正當前裝備狀態
+                validateAndCorrectActorEquipment(actor);
+                // 刷新角色狀態
+                actor.refresh();
+            }
+        });
+    }
+
+    function validateAndCorrectActorEquipment(actor) {
+        // 檢查是否可以忽略雙手武器限制
+        if (actor.canIgnoreZweihander()) {
+            // 可以忽略限制，不需要修正
+            return;
+        }
+
+        const weapon0 = actor._equips[0] ? actor._equips[0].object() : null;
+        const weapon1 = actor._equips[1] ? actor._equips[1].object() : null;
+        
+        // 檢查雙手武器與盾牌/副手武器的衝突
+        if (weapon0 && DataManager.isZweihanderWeapon(weapon0)) {
+            // 主手是雙手武器，檢查是否有副手裝備
+            if (weapon1 || (actor._equips[1] && actor._equips[1]._itemId > 0)) {
+                // 有副手裝備，需要卸除副手
+                forceUnequipSlot(actor, 1);
+            }
+        } else if (weapon1 && DataManager.isZweihanderWeapon(weapon1)) {
+            // 副手是雙手武器（雙武器模式），需要移到主手
+            if (actor.isDualWield()) {
+                // 卸除主手武器
+                if (weapon0) {
+                    forceUnequipSlot(actor, 0);
+                }
+                // 將副手的雙手武器移到主手
+                const zweihanderWeapon = weapon1;
+                forceUnequipSlot(actor, 1);
+                actor._equips[0].setObject(zweihanderWeapon);
+            }
+        }
+
+        // 檢查盾牌與雙手武器的衝突
+        if (!actor.isDualWield() && weapon1 && !DataManager.isWeapon(weapon1)) {
+            // 裝備了盾牌，檢查主手是否是雙手武器
+            if (weapon0 && DataManager.isZweihanderWeapon(weapon0)) {
+                forceUnequipSlot(actor, 1);
+            }
+        }
+
+        // 檢查雙武器模式下的衝突
+        if (actor.isDualWield() && weapon0 && weapon1) {
+            // 雙武器模式，檢查是否有雙手武器
+            if (DataManager.isZweihanderWeapon(weapon0)) {
+                forceUnequipSlot(actor, 1);
+            } else if (DataManager.isZweihanderWeapon(weapon1)) {
+                // 將副手的雙手武器移到主手
+                const zweihanderWeapon = weapon1;
+                forceUnequipSlot(actor, 0);
+                forceUnequipSlot(actor, 1);
+                actor._equips[0].setObject(zweihanderWeapon);
+            }
+        }
+    }
+
+    function forceUnequipSlot(actor, slotId) {
+        // 強制卸除指定槽位的裝備（交易回物品欄）
+        if (actor._equips[slotId] && actor._equips[slotId]._itemId > 0) {
+            const item = actor._equips[slotId].object();
+            if (item) {
+                // 交易回物品欄
+                actor.tradeItemWithParty(null, item);
+            }
+            actor._equips[slotId].setObject(null);
+        }
+    }
+
+    function shouldApplyDualGripBonus(actor, weapon, otherWeapon) {
+        const equipExists = weapon ? true : false;
+        const isWeapon = DataManager.isWeapon(weapon);
+        const isZweihanderWeapon = DataManager.isZweihanderWeapon(weapon);
+        const otherEquipExists = otherWeapon ? true : false;
+        const hasDualGripSkill = actor.hasDualGripSkill();
+        return equipExists && isWeapon && !isZweihanderWeapon && !otherEquipExists && hasDualGripSkill;
+    }
+
+    DataManager.isZweihanderWeapon = function(item) {
+        if (!this.isWeapon(item)) return false;
+        
+        // 優先檢查 meta 資料
+        const isZweihanderMeta = item.meta && item.meta.isZweihander === true;
+        
+        // 如果 meta 沒有設定，檢查 note 標籤（向後兼容）
+        const isZweihanderNote = item.note && item.note.includes('<isZweihander:true>');
+        
+        return isZweihanderMeta || isZweihanderNote;
+    };
+
+    Game_Actor.prototype.hasDualGripSkill = function() {
+        // 先檢查裝備優先級
+        const equipmentResult = checkEquipmentDualGripSkill(this);
+        if (equipmentResult !== null) {
+            return equipmentResult;
         }
         
-        // 角色優先：如果角色設置了true，則可以忽略
-        // Actor priority: If actor set true, can ignore
-        // アクター優先：アクターがtrueを設定した場合、無視可能
-        if (actorNoteData.includes(`<${ignoreTagName}:true>`)) {
-            return true;
+        // 裝備都沒設定時，檢查角色設定
+        const actorResult = checkActorDualGripSkill(this);
+        if (actorResult !== null) {
+            return actorResult;
         }
         
-        // 如果角色沒有設置，則檢查職業
-        // If actor has no setting, check class
-        // アクターに設定がない場合、職業をチェック
-        if (classNoteData.includes(`<${ignoreTagName}:true>`)) {
-            return true;
+        // 角色沒設定時，檢查職業設定
+        const classResult = checkClassDualGripSkill(this);
+        if (classResult !== null) {
+            return classResult;
         }
         
-        // 默認不能忽略 / Default cannot ignore / デフォルトは無視不可
+        // 默認沒有雙手持技能
         return false;
     };
 
-    /**
-     * 檢查角色當前是否裝備了雙手武器
-     * Check if actor currently has two-handed weapon equipped
-     * アクターが現在両手武器を装備しているかチェック
-     * @returns {boolean} 是否裝備雙手武器 / Whether equipped with two-handed weapon / 両手武器を装備しているかどうか
-     */
-    Game_Actor.prototype.hasZweihanderEquipped = function() {
-        const weapons = this.weapons();
-        return weapons.some(weapon => DataManager.isZweihanderWeapon(weapon));
+    function checkEquipmentDualGripSkill(actor) {
+        const equippedItems = actor.weapons().concat(actor.armors());
+        let hasTrue = false;
+        let hasFalse = false;
+        
+        for (const item of equippedItems) {
+            if (item && item.meta) {
+                const metaValue = item.meta[dualGripTagName];
+                if (metaValue === true || metaValue === 'true') {
+                    hasTrue = true;
+                } else if (metaValue === false || metaValue === 'false') {
+                    hasFalse = true;
+                }
+            }
+        }
+        
+        // 如果有任何裝備設定為 false，返回 false
+        if (hasFalse) {
+            return false;
+        }
+        
+        // 如果有任何裝備設定為 true，返回 true
+        if (hasTrue) {
+            return true;
+        }
+        
+        // 所有裝備都沒有設定，返回 null 表示需要檢查下一優先級
+        return null;
+    }
+
+    function checkActorDualGripSkill(actor) {
+        const actorMeta = actor.actor().meta;
+        if (actorMeta && actorMeta[dualGripTagName] !== undefined) {
+            return actorMeta[dualGripTagName] === true;
+        }
+        
+        // 沒有設定，返回 null 表示需要檢查下一優先級
+        return null;
+    }
+
+    function checkClassDualGripSkill(actor) {
+        const classMeta = actor.currentClass().meta;
+        if (classMeta && classMeta[dualGripTagName] !== undefined) {
+            return classMeta[dualGripTagName] === true;
+        }
+        
+        // 沒有設定，返回 null 表示使用默認值
+        return null;
+    }
+
+    // 移除原本的 applyDualGripBonusTraits 和 removeDualGripBonusTraits 函數
+    // 改為動態計算雙手持加成
+    Game_Actor.prototype.getDualGripBonusTraits = function() {
+        const weapon0 = this._equips[0] ? this._equips[0].object() : null;
+        const weapon1 = this._equips[1] ? this._equips[1].object() : null;
+        
+        const traits = [];
+        
+        // 檢查主手武器是否符合雙手持條件
+        if (shouldApplyDualGripBonus(this, weapon0, weapon1)) {
+            traits.push(...this.createDualGripBonusTraits());
+        }
+        
+        // 檢查副手武器是否符合雙手持條件（雙武器模式）
+        if (shouldApplyDualGripBonus(this, weapon1, weapon0)) {
+            traits.push(...this.createDualGripBonusTraits());
+        }
+        
+        return traits;
     };
 
-    /**
-     * 檢查角色當前是否裝備了盾牌（槽位1）
-     * Check if actor has shield equipped (slot 1)
-     * アクターが盾を装備しているかチェック（スロット1）
-     * @returns {boolean} 是否裝備盾牌 / Whether equipped with shield / 盾を装備しているかどうか
-     */
+    Game_Actor.prototype.createDualGripBonusTraits = function() {
+        const traits = [];
+        
+        DualGripBonusData.forEach(entry => {
+            const trait = TraitKeyMap[entry.key];
+            if (!trait) return;
+
+            traits.push({
+                    code: trait.code,
+                    dataId: trait.dataId,
+                    value: entry.value
+                });
+        });
+        
+        return traits;
+    };
+
+    // 重寫 traitObjects 方法來動態添加雙手持加成
+    const _Game_Actor_traitObjects = Game_Actor.prototype.traitObjects;
+    Game_Actor.prototype.traitObjects = function() {
+        const objects = _Game_Actor_traitObjects.call(this);
+        
+        // 動態添加雙手持加成
+        const dualGripBonusTraits = this.getDualGripBonusTraits();
+        if (dualGripBonusTraits.length > 0) {
+            // 創建一個虛擬物件來承載雙手持加成
+            const dualGripObject = {
+                traits: dualGripBonusTraits
+            };
+            objects.push(dualGripObject);
+        }
+        
+        return objects;
+    };
+
+    // 移除原本的 applyDualGripBonusIfNeeded 函數
+    // 移除原本的 applyDualGripBonusTraits 函數
+    // 移除原本的 removeDualGripBonusTraits 函數
+
+    Game_Actor.prototype.canIgnoreZweihander = function() {
+        // 先檢查裝備優先級
+        const equipmentResult = checkEquipmentIgnoreTag(this);
+        if (equipmentResult !== null) {
+            return equipmentResult;
+        }
+        
+        // 裝備都沒設定時，檢查角色設定
+        const actorResult = checkActorIgnoreTag(this);
+        if (actorResult !== null) {
+            return actorResult;
+        }
+        
+        // 角色沒設定時，檢查職業設定
+        const classResult = checkClassIgnoreTag(this);
+        if (classResult !== null) {
+            return classResult;
+        }
+        
+        // 默認不能忽略
+        return false;
+    };
+
+    function checkEquipmentIgnoreTag(actor) {
+        const equippedItems = actor.weapons().concat(actor.armors());
+        let hasTrue = false;
+        let hasFalse = false;
+        
+        for (const item of equippedItems) {
+            if (item && item.meta) {
+                const metaValue = item.meta[ignoreTagName];
+                if (metaValue === true || metaValue === 'true') {
+                    hasTrue = true;
+                } else if (metaValue === false || metaValue === 'false') {
+                    hasFalse = true;
+                }
+            }
+        }
+        
+        // 如果有任何裝備設定為 false，返回 false
+        if (hasFalse) {
+            return false;
+        }
+        
+        // 如果有任何裝備設定為 true，返回 true
+        if (hasTrue) {
+            return true;
+        }
+        
+        // 所有裝備都沒有設定，返回 null 表示需要檢查下一優先級
+        return null;
+    }
+
+    function checkActorIgnoreTag(actor) {
+        const actorMeta = actor.actor().meta;
+        if (actorMeta && actorMeta[ignoreTagName] !== undefined) {
+            return actorMeta[ignoreTagName] === true;
+        }
+        
+        // 沒有設定，返回 null 表示需要檢查下一優先級
+        return null;
+    }
+
+    function checkClassIgnoreTag(actor) {
+        const classMeta = actor.currentClass().meta;
+        if (classMeta && classMeta[ignoreTagName] !== undefined) {
+            return classMeta[ignoreTagName] === true;
+        }
+        
+        // 沒有設定，返回 null 表示使用默認值
+        return null;
+    }
+
+    Game_Actor.prototype.hasZweihanderEquipped = function() {
+        return this.weapons().some(weapon => DataManager.isZweihanderWeapon(weapon));
+    };
+
     Game_Actor.prototype.hasShieldEquipped = function() {
-        const shieldItem = this._equips[1]; // 槽位1是盾牌 / Slot 1 is shield / スロット1は盾
+        const shieldItem = this._equips[1];
         return shieldItem && shieldItem._itemId > 0;
     };
 
-    /**
-     * 重寫裝備變更方法 - 處理雙手武器邏輯
-     * Override equipment change method - Handle two-handed weapon logic
-     * 装備変更メソッドをオーバーライド - 両手武器ロジックを処理
-     */
+    DataManager.isShield = function(item) {
+        return DataManager.isArmor(item) && item.etypeId === 2;
+    };
+
+    const _Window_ItemList_makeItemList = Window_ItemList.prototype.makeItemList;
+    Window_ItemList.prototype.makeItemList = function() {
+        _Window_ItemList_makeItemList.call(this);
+        const isEquipScene = this._category === "none";
+        const isEquipType1Locked = this._actor?.isEquipTypeLocked(1);
+        const isEquipType2Locked = this._actor?.isEquipTypeLocked(2);
+        const isShieldEquipped = this._actor?.hasShieldEquipped();
+        if (isEquipScene && this._actor && isEquipType2Locked && isShieldEquipped) {
+            this._data = this._data.filter(item => !DataManager.isZweihanderWeapon(item));
+        }
+        if (isEquipScene && this._actor && isEquipType1Locked && this._actor.hasZweihanderEquipped()) {
+            this._data = this._data.filter(item => !DataManager.isShield(item));
+        }
+    };
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
     Game_Actor.prototype.changeEquip = function(slotId, item) {
-        // 如果角色可以忽略雙手武器限制，則不進行限制
-        // If actor can ignore two-handed restrictions, no restrictions apply
-        // アクターが両手武器制限を無視できる場合、制限を適用しない
+        if (slotId > 1) {
+            handleArmorEquipChange(this, slotId, item);
+            return;
+        }
+        
         if (this.canIgnoreZweihander()) {
             _Game_Actor_changeEquip.apply(this, arguments);
-            return;
-        }
-        
-        // 處理武器槽位0的雙手武器裝備
-        // Handle two-handed weapon equipping in weapon slot 0
-        // 武器スロット0での両手武器装備を処理
-        if (slotId === 0 && DataManager.isZweihanderWeapon(item)) {
-            // 先裝備武器 / First equip weapon / まず武器を装備
-            _Game_Actor_changeEquip.apply(this, arguments);
-            // 然後卸下盾牌（槽位1） / Then unequip shield (slot 1) / 次に盾を外す（スロット1）
-            if (this._equips[1] && this._equips[1]._itemId > 0) {
-                this.tradeItemWithParty(null, this._equips[1].object());
-                this._equips[1].setObject(null);
-            }
-            return;
-        }
-        
-        // 處理雙武器模式下槽位1的雙手武器裝備
-        // Handle two-handed weapon equipping in slot 1 under dual wield mode
-        // 二刀流モードでのスロット1での両手武器装備を処理
-        if (slotId === 1 && this.isDualWield() && DataManager.isZweihanderWeapon(item)) {
-            // 卸除槽位0的武器 / Remove weapon from slot 0 / スロット0の武器を外す
-            if (this._equips[0] && this._equips[0]._itemId > 0) {
-                this.tradeItemWithParty(null, this._equips[0].object());
-                this._equips[0].setObject(null);
-            }
-            // 將雙手武器裝備到槽位0 / Equip two-handed weapon to slot 0 / 両手武器をスロット0に装備
-            this.changeEquip(0, item);
-            return;
-        }
-        
-        // 處理雙武器模式下槽位1的單手武器裝備
-        // Handle single-handed weapon equipping in slot 1 under dual wield mode
-        // 二刀流モードでのスロット1での片手武器装備を処理
-        if (slotId === 1 && this.isDualWield() && DataManager.isWeapon(item) && !DataManager.isZweihanderWeapon(item)) {
-            const slot0Weapon = this._equips[0].object();
-            
-            // 若槽位0為雙手武器，則卸除槽位0，將單手武器移至槽位0
-            // If slot 0 has two-handed weapon, remove it and move single-handed weapon to slot 0
-            // スロット0が両手武器の場合、それを外して片手武器をスロット0に移動
-            if (slot0Weapon && DataManager.isZweihanderWeapon(slot0Weapon)) {
-                this.tradeItemWithParty(null, slot0Weapon);
-                this._equips[0].setObject(null);
-                this.changeEquip(0, item);
-                return;
-            }
-            
-            // 若槽位0為空，則將單手武器裝備到槽位0
-            // If slot 0 is empty, equip single-handed weapon to slot 0
-            // スロット0が空の場合、片手武器をスロット0に装備
-            if (!slot0Weapon) {
-                this.changeEquip(0, item);
-                return;
-            }
-            
-            // 若槽位0不為雙手武器且不為空，則正常裝備到槽位1
-            // If slot 0 is not two-handed and not empty, normally equip to slot 1
-            // スロット0が両手武器でなく空でもない場合、スロット1に通常装備
-            _Game_Actor_changeEquip.apply(this, arguments);
-            return;
-        }
-        
-        // 處理盾牌裝備時與雙手武器的衝突
-        // Handle conflicts between shield equipping and two-handed weapons
-        // 盾装備時と両手武器との競合を処理
-        if (slotId === 1 && item && !this.isDualWield()) {
-            // 檢查當前是否裝備了雙手武器
-            // Check if currently equipped with two-handed weapon
-            // 現在両手武器を装備しているかチェック
-            if (this.hasZweihanderEquipped()) {
-                // 卸下武器槽位0的雙手武器
-                // Unequip two-handed weapon from slot 0
-                // スロット0の両手武器を外す
-                const weapon = this._equips[0].object();
-                if (DataManager.isZweihanderWeapon(weapon)) {
-                    this.tradeItemWithParty(null, weapon);
-                    this._equips[0].setObject(null);
-                }
-            }
-            // 然後裝備盾牌 / Then equip shield / 次に盾を装備
-            _Game_Actor_changeEquip.apply(this, arguments);
+            // 動態計算，不需要手動更新雙手持加成
             return;
         }
 
-        // 其他情況正常裝備 / Other cases equip normally / その他の場合は通常装備
-        _Game_Actor_changeEquip.apply(this, arguments);
+        if (slotId === 0) {
+            handleMainWeaponEquip(this, item);
+        } else if (slotId === 1) {
+            handleOffhandEquip(this, item);
+        }
+        
+        // 動態計算，不需要手動更新雙手持加成
     };
 
-    /**
-     * 重寫強制裝備變更方法 - 處理雙手武器邏輯（無交易版本）
-     * Override force equipment change method - Handle two-handed weapon logic (no trading version)
-     * 強制装備変更メソッドをオーバーライド - 両手武器ロジックを処理（取引なしバージョン）
-     */
+    function handleArmorEquipChange(actor, slotId, item) {
+        const currentIgnoreResult = actor.canIgnoreZweihander();
+        
+        _Game_Actor_changeEquip.call(actor, slotId, item);
+        
+        const newIgnoreResult = actor.canIgnoreZweihander();
+        
+        if (currentIgnoreResult && !newIgnoreResult) {
+            forceRemoveConflictingEquipment(actor);
+        }
+    }
+
+    function forceRemoveConflictingEquipment(actor) {
+        if (actor._equips[0] && actor._equips[1] && 
+            (DataManager.isZweihanderWeapon(actor._equips[0].object()) || 
+             DataManager.isZweihanderWeapon(actor._equips[1].object()))) {
+            
+            if (actor._equips[1] && actor._equips[1]._itemId > 0) {
+                actor.tradeItemWithParty(null, actor._equips[1].object());
+                actor._equips[1].setObject(null);
+            }
+        }
+    }
+
+    function handleMainWeaponEquip(actor, item) {
+        if (DataManager.isZweihanderWeapon(item)) {
+            _Game_Actor_changeEquip.call(actor, 0, item);
+            removeShieldAfterZweihanderEquip(actor);
+        } else {
+            _Game_Actor_changeEquip.call(actor, 0, item);
+        }
+    }
+
+    function removeShieldAfterZweihanderEquip(actor) {
+        if (actor._equips[1] && actor._equips[1]._itemId > 0) {
+            actor.tradeItemWithParty(null, actor._equips[1].object());
+            actor._equips[1].setObject(null);
+        }
+    }
+
+    function handleOffhandEquip(actor, item) {
+        if (actor.isDualWield()) {
+            handleDualWieldOffhandEquip(actor, item);
+        } else {
+            handleShieldEquip(actor, item);
+        }
+    }
+
+    function handleDualWieldOffhandEquip(actor, item) {
+        if (DataManager.isZweihanderWeapon(item)) {
+            removeMainWeaponForZweihander(actor);
+            actor.changeEquip(0, item);
+        } else if (DataManager.isWeapon(item) && !DataManager.isZweihanderWeapon(item)) {
+            const slot0Weapon = actor._equips[0].object();
+            
+            if (slot0Weapon && DataManager.isZweihanderWeapon(slot0Weapon)) {
+                actor.tradeItemWithParty(null, slot0Weapon);
+                actor._equips[0].setObject(null);
+                actor.changeEquip(0, item);
+            } else if (!slot0Weapon) {
+                actor.changeEquip(0, item);
+            } else {
+                _Game_Actor_changeEquip.call(actor, 1, item);
+            }
+        }
+    }
+
+    function removeMainWeaponForZweihander(actor) {
+        if (actor._equips[0] && actor._equips[0]._itemId > 0) {
+            actor.tradeItemWithParty(null, actor._equips[0].object());
+            actor._equips[0].setObject(null);
+        }
+    }
+
+    function handleShieldEquip(actor, item) {
+        if (item && actor.hasZweihanderEquipped()) {
+            removeZweihanderForShield(actor);
+        }
+        _Game_Actor_changeEquip.call(actor, 1, item);
+    }
+
+    function removeZweihanderForShield(actor) {
+        const weapon = actor._equips[0].object();
+        if (DataManager.isZweihanderWeapon(weapon)) {
+            actor.tradeItemWithParty(null, weapon);
+            actor._equips[0].setObject(null);
+        }
+    }
+
+    // 移除 updateDualGripBonusAfterEquip 及其相關函數
+    // 因為我們已經改為動態計算，不需要手動更新雙手持加成
+
     const _Game_Actor_forceChangeEquip = Game_Actor.prototype.forceChangeEquip;
     Game_Actor.prototype.forceChangeEquip = function(slotId, item) {
-        // 如果角色可以忽略雙手武器限制，則不進行限制
-        // If actor can ignore two-handed restrictions, no restrictions apply
-        // アクターが両手武器制限を無視できる場合、制限を適用しない
+        if (slotId > 1) {
+            handleArmorForceEquipChange(this, slotId, item);
+            return;
+        }
+        
         if (this.canIgnoreZweihander()) {
             _Game_Actor_forceChangeEquip.apply(this, arguments);
+            // 動態計算，不需要手動更新雙手持加成
             return;
         }
 
-        // 處理武器槽位0的強制雙手武器裝備
-        // Handle forced two-handed weapon equipping in weapon slot 0
-        // 武器スロット0での強制両手武器装備を処理
-        if (slotId === 0 && DataManager.isZweihanderWeapon(item)) {
-            // 先裝備武器 / First equip weapon / まず武器を装備
-            _Game_Actor_forceChangeEquip.apply(this, arguments);
-            // 然後卸下盾牌（槽位1） / Then unequip shield (slot 1) / 次に盾を外す（スロット1）
-            if (this._equips[1] && this._equips[1]._itemId > 0) {
-                this._equips[1].setObject(null);
-            }
-            return;
+        if (slotId === 0) {
+            handleMainWeaponForceEquip(this, item);
+        } else if (slotId === 1) {
+            handleOffhandForceEquip(this, item);
         }
         
-        // 處理雙武器模式下槽位1的強制雙手武器裝備
-        // Handle forced two-handed weapon equipping in slot 1 under dual wield mode
-        // 二刀流モードでのスロット1での強制両手武器装備を処理
-        if (slotId === 1 && this.isDualWield() && DataManager.isZweihanderWeapon(item)) {
-            // 卸除槽位0的武器 / Remove weapon from slot 0 / スロット0の武器を外す
-            if (this._equips[0] && this._equips[0]._itemId > 0) {
-                this._equips[0].setObject(null);
-            }
-            // 將雙手武器裝備到槽位0 / Equip two-handed weapon to slot 0 / 両手武器をスロット0に装備
-            this.forceChangeEquip(0, item);
-            return;
-        }
-        
-        // 處理雙武器模式下槽位1的強制單手武器裝備
-        // Handle forced single-handed weapon equipping in slot 1 under dual wield mode
-        // 二刀流モードでのスロット1での強制片手武器装備を処理
-        if (slotId === 1 && this.isDualWield() && DataManager.isWeapon(item) && !DataManager.isZweihanderWeapon(item)) {
-            const slot0Weapon = this._equips[0].object();
-            
-            // 若槽位0為雙手武器，則卸除槽位0，將單手武器移至槽位0
-            // If slot 0 has two-handed weapon, remove it and move single-handed weapon to slot 0
-            // スロット0が両手武器の場合、それを外して片手武器をスロット0に移動
-            if (slot0Weapon && DataManager.isZweihanderWeapon(slot0Weapon)) {
-                this._equips[0].setObject(null);
-                this.forceChangeEquip(0, item);
-                return;
-            }
-            
-            // 若槽位0為空，則將單手武器裝備到槽位0
-            // If slot 0 is empty, equip single-handed weapon to slot 0
-            // スロット0が空の場合、片手武器をスロット0に装備
-            if (!slot0Weapon) {
-                this.forceChangeEquip(0, item);
-                return;
-            }
-            
-            // 若槽位0不為雙手武器且不為空，則正常裝備到槽位1
-            // If slot 0 is not two-handed and not empty, normally equip to slot 1
-            // スロット0が両手武器でなく空でもない場合、スロット1に通常装備
-            _Game_Actor_forceChangeEquip.apply(this, arguments);
-            return;
-        }
-        
-        // 處理強制盾牌裝備時與雙手武器的衝突
-        // Handle conflicts between forced shield equipping and two-handed weapons
-        // 強制盾装備時と両手武器との競合を処理
-        if (slotId === 1 && item && !this.isDualWield()) {
-            // 檢查當前是否裝備了雙手武器
-            // Check if currently equipped with two-handed weapon
-            // 現在両手武器を装備しているかチェック
-            if (this.hasZweihanderEquipped()) {
-                // 卸下武器槽位0的雙手武器
-                // Unequip two-handed weapon from slot 0
-                // スロット0の両手武器を外す
-                const weapon = this._equips[0].object();
-                if (DataManager.isZweihanderWeapon(weapon)) {
-                    this._equips[0].setObject(null);
-                }
-            }
-            // 然後裝備盾牌 / Then equip shield / 次に盾を装備
-            _Game_Actor_forceChangeEquip.apply(this, arguments);
-            return;
-        }
-
-        // 其他情況正常裝備 / Other cases equip normally / その他の場合は通常装備
-        _Game_Actor_forceChangeEquip.apply(this, arguments);
+        // 動態計算，不需要手動更新雙手持加成
     };
+
+    function handleArmorForceEquipChange(actor, slotId, item) {
+        const currentIgnoreResult = actor.canIgnoreZweihander();
+        
+        _Game_Actor_forceChangeEquip.call(actor, slotId, item);
+        
+        const newIgnoreResult = actor.canIgnoreZweihander();
+        
+        if (currentIgnoreResult && !newIgnoreResult) {
+            forceRemoveConflictingEquipmentNoTrade(actor);
+        }
+    }
+
+    function forceRemoveConflictingEquipmentNoTrade(actor) {
+        if (actor._equips[0] && actor._equips[1] && 
+            (DataManager.isZweihanderWeapon(actor._equips[0].object()) || 
+             DataManager.isZweihanderWeapon(actor._equips[1].object()))) {
+            
+            if (actor._equips[1] && actor._equips[1]._itemId > 0) {
+                actor._equips[1].setObject(null);
+            }
+        }
+    }
+
+    function handleMainWeaponForceEquip(actor, item) {
+        if (DataManager.isZweihanderWeapon(item)) {
+            _Game_Actor_forceChangeEquip.call(actor, 0, item);
+            forceRemoveShieldAfterZweihanderEquip(actor);
+        } else {
+            _Game_Actor_forceChangeEquip.call(actor, 0, item);
+        }
+    }
+
+    function forceRemoveShieldAfterZweihanderEquip(actor) {
+        if (actor._equips[1] && actor._equips[1]._itemId > 0) {
+            actor._equips[1].setObject(null);
+        }
+    }
+
+    function handleOffhandForceEquip(actor, item) {
+        if (actor.isDualWield()) {
+            handleDualWieldOffhandForceEquip(actor, item);
+        } else {
+            handleShieldForceEquip(actor, item);
+        }
+    }
+
+    function handleDualWieldOffhandForceEquip(actor, item) {
+        if (DataManager.isZweihanderWeapon(item)) {
+            forceRemoveMainWeaponForZweihander(actor);
+            actor.forceChangeEquip(0, item);
+        } else if (DataManager.isWeapon(item) && !DataManager.isZweihanderWeapon(item)) {
+            const slot0Weapon = actor._equips[0].object();
+            
+            if (slot0Weapon && DataManager.isZweihanderWeapon(slot0Weapon)) {
+                actor._equips[0].setObject(null);
+                actor.forceChangeEquip(0, item);
+            } else if (!slot0Weapon) {
+                actor.forceChangeEquip(0, item);
+            } else {
+                _Game_Actor_forceChangeEquip.call(actor, 1, item);
+            }
+        }
+    }
+
+    function forceRemoveMainWeaponForZweihander(actor) {
+        if (actor._equips[0] && actor._equips[0]._itemId > 0) {
+            actor._equips[0].setObject(null);
+        }
+    }
+
+    function handleShieldForceEquip(actor, item) {
+        if (item && actor.hasZweihanderEquipped()) {
+            forceRemoveZweihanderForShield(actor);
+        }
+        _Game_Actor_forceChangeEquip.call(actor, 1, item);
+    }
+
+    function forceRemoveZweihanderForShield(actor) {
+        const weapon = actor._equips[0].object();
+        if (DataManager.isZweihanderWeapon(weapon)) {
+            actor._equips[0].setObject(null);
+        }
+    }
 
 })(); 
