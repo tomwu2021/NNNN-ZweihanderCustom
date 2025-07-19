@@ -72,19 +72,19 @@
  * 雙手持技能加成內容 / Dual Grip Skill Bonuses / 両手持ちスキルボーナス内容：
  * - 可透過插件參數設定各項參數的加成倍率
  * - 支援所有基本參數、追加參數、特殊參數
- * - 預設值：攻擊力 x1.2、敏捷 x1.1、暴擊率 +10%、命中率 +15%、防禦效果率 +20%
+ * - 預設值：攻擊力 x1.2、暴擊率 +10%
  * - Can configure bonus multipliers for each parameter through plugin settings
  * - Supports all basic parameters, extra parameters, and special parameters
- * - Default values: Attack x1.2, Agility x1.1, Critical rate +10%, Hit rate +15%, Guard effect rate +20%
+ * - Default values: Attack x1.2, Critical rate +10%
 * - プラグインパラメータで各パラメータのボーナス倍率を設定可能
 * - 全ての基本パラメータ、追加パラメータ、特殊パラメータをサポート
-* - デフォルト値：攻撃力 x1.2、敏捷性 x1.1、会心率 +10%、命中率 +15%、防御効果率 +20%
+* - デフォルト値：攻撃力 x1.2、会心率 +10%
  * 
  * @param dualGripBonuses
  * @text 雙手持技能加成設定 / Dual Grip Skill Bonuses / 両手持ちスキルボーナス設定
  * @desc 設定雙手持技能的各項參數加成 / Configure parameter bonuses for dual grip skill / 両手持ちスキルの各種パラメータボーナスを設定
  * @type struct<DualGripBonus>[]
- * @default ["{\"param\":\"ATK\",\"value\":\"1.2\"}","{\"param\":\"AGI\",\"value\":\"1.1\"}","{\"param\":\"CRI\",\"value\":\"0.1\"}","{\"param\":\"HIT\",\"value\":\"0.15\"}","{\"param\":\"GRD\",\"value\":\"0.2\"}"]
+ * @default ["{\"param\":\"ATK\",\"value\":\"1.2\"}","{\"param\":\"CRI\",\"value\":\"0.1\"}"]
  *
 */
 
@@ -556,13 +556,11 @@
         const isEquipType1Locked = this._actor?.isEquipTypeLocked(1);
         const isEquipType2Locked = this._actor?.isEquipTypeLocked(2);
         const isShieldEquipped = this._actor?.hasShieldEquipped();
-        const hasIgnoreTag = checkActorIgnoreTag(this._actor);
-
         if (isEquipScene && this._actor && isEquipType2Locked && isShieldEquipped) {
-            this._data = this._data.filter(item => !DataManager.isZweihanderWeapon(item) && !hasIgnoreTag);
+            this._data = this._data.filter(item => !DataManager.isZweihanderWeapon(item));
         }
         if (isEquipScene && this._actor && isEquipType1Locked && this._actor.hasZweihanderEquipped()) {
-            this._data = this._data.filter(item => !DataManager.isShield(item) && !hasIgnoreTag);
+            this._data = this._data.filter(item => !DataManager.isShield(item));
         }
     };
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
